@@ -1,0 +1,10 @@
+import "dotenv/config";
+import express from "express";
+import cors from "cors";
+import pg from "pg";
+const {Pool}=pg; const app=express();
+app.use(cors({origin:process.env.CORS_ORIGIN?.split(",")||"*"})); app.use(express.json());
+const pool=process.env.DATABASE_URL?new Pool({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauthorized:false}}):null;
+app.get("/health",async(_q,res)=>{let database="not_configured";if(pool){try{await pool.query("select 1");database="ok"}catch{database="error"}}res.json({ok:true,service:"NaijaNear API",database})});
+app.get("/api/places",async(req,res)=>{if(!pool)return res.status(503).json({error:"DATABASE_URL is not configured"});const q=String(req.query.q||"").trim(),city=String(req.query.city||"").trim(),type=String(req.query.type||"").trim();let p=[],w=[];if(q){p.push("%"+q+"%");w.push("(name ILIKE $"+p.length+" OR description ILIKE $"+p.length+")")}if(city){p.push(city);w.push("city ILIKE $"+p.length)}if(type){p.push(type);w.push("type=$"+p.length)}const r=await pool.query(`SELECT id,name,type,city,address,rating,description,latitude,longitude FROM places ${w.length?"WHERE "+w.join(" AND "):""} ORDER BY rating DESC NULLS LAST LIMIT 50`,p);res.json({results:r.rows})});
+app.listen(process.env.PORT||4000,()=>console.log("NaijaNear API listening"));
