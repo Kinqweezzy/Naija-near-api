@@ -1,1 +1,2 @@
 "dev":"node --watch server.js"
+"start":"node server.js"
